@@ -1,0 +1,75 @@
+# ------------------------------------------------------------
+# Global
+# ------------------------------------------------------------
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.log
+*.tmp
+*.swp
+*.swo
+*.bak
+*.orig
+
+# Environment / secrets (keep example files)
+.env
+.env.*
+*.env
+!**/env.example
+!**/.env.example
+
+# Node / Frontend
+**/node_modules/
+**/.cache/
+**/.parcel-cache/
+**/.next/
+**/.nuxt/
+**/.vite/
+**/dist/
+**/build/
+**/coverage/
+**/.eslintcache
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Python / Django
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*.pyd
+*.pyo
+*.so
+*.egg-info/
+.eggs/
+.tox/
+.mypy_cache/
+.pytest_cache/
+.cache/
+.coverage
+.coverage.*
+htmlcov/
+.python-version
+.envrc
+.venv/
+.venv*/
+venv/
+ENV/
+
+# Project-specific: FinTrack Backend
+FinTrack Backend/.env
+FinTrack Backend/db.sqlite3
+FinTrack Backend/media/
+FinTrack Backend/dump.rdb
+FinTrack Backend/celerybeat-schedule*
+
+# Project-specific: FinTrack Frontend
+FinTrack Frontend/fintrackfront/.env
+
+# IDE / Editor
+.idea/
+.vscode/
+*.iml
+
+

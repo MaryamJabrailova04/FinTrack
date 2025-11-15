@@ -1,0 +1,486 @@
+{
+  "info": {
+    "name": "Fintrack API",
+    "_postman_id": "e6d1a3c2-4f9e-47c1-9f7a-9b8e4a1b0c21",
+    "description": "Postman collection for Fintrack (Django + DRF + JWT). Import with the Fintrack.local environment.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register (random user)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/accounts/register/", "host": ["{{baseUrl}}"], "path": ["api","accounts","register",""] },
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"user{{$timestamp}}@example.com\",\n  \"password\": \"Test1234!\",\n  \"username\": \"user{{$timestamp}}\",\n  \"name\": \"{{$randomFullName}}\"\n}" }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "try {",
+                  "  const b = JSON.parse(pm.request.body.raw);",
+                  "  pm.environment.set('username', b.username);",
+                  "  pm.environment.set('password', b.password);",
+                  "  pm.environment.set('email', b.email);",
+                  "} catch(e) {}",
+                  "pm.test('Register returns 201/200/400', () => pm.expect([200,201,400]).to.include(pm.response.code));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Token: Obtain",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/token/", "host": ["{{baseUrl}}"], "path": ["api","auth","token",""] },
+            "body": { "mode": "raw", "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}" }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const data = pm.response.json();",
+                  "if (data.access) pm.environment.set('accessToken', data.access);",
+                  "if (data.refresh) pm.environment.set('refreshToken', data.refresh);",
+                  "pm.test('Got access token', () => pm.expect(data).to.have.property('access'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Token: Verify",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/token/verify/", "host": ["{{baseUrl}}"], "path": ["api","auth","token","verify",""] },
+            "body": { "mode": "raw", "raw": "{\n  \"token\": \"{{accessToken}}\"\n}" }
+          },
+          "response": []
+        },
+        {
+          "name": "Token: Refresh",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/token/refresh/", "host": ["{{baseUrl}}"], "path": ["api","auth","token","refresh",""] },
+            "body": { "mode": "raw", "raw": "{\n  \"refresh\": \"{{refreshToken}}\"\n}" }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const data = pm.response.json();",
+                  "if (data.access) pm.environment.set('accessToken', data.access);",
+                  "pm.test('Refreshed access token', () => pm.expect(data).to.have.property('access'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout (Blacklist Refresh)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/accounts/logout/", "host": ["{{baseUrl}}"], "path": ["api","accounts","logout",""] },
+            "body": { "mode": "raw", "raw": "{\n  \"refresh\": \"{{refreshToken}}\"\n}" }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Accounts",
+      "item": [
+        {
+          "name": "WhoAmI (me)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/accounts/me/", "host": ["{{baseUrl}}"], "path": ["api","accounts","me",""] }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Profile",
+      "item": [
+        {
+          "name": "Profile Me - GET",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/profile/me/", "host": ["{{baseUrl}}"], "path": ["api","profile","me",""] }
+          },
+          "response": []
+        },
+        {
+          "name": "Profile Me - PUT (set display_name & goal)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/profile/me/", "host": ["{{baseUrl}}"], "path": ["api","profile","me",""] },
+            "body": { "mode": "raw", "raw": "{\n  \"display_name\": \"Tester {{username}}\",\n  \"monthly_goal\": 500.00\n}" }
+          },
+          "response": []
+        },
+        {
+          "name": "Profile Me - PATCH",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/profile/me/", "host": ["{{baseUrl}}"], "path": ["api","profile","me",""] },
+            "body": { "mode": "raw", "raw": "{\n  \"monthly_goal\": 750.00\n}" }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Settings",
+      "item": [
+        {
+          "name": "Settings Me - GET",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/settings/me/", "host": ["{{baseUrl}}"], "path": ["api","settings","me",""] }
+          },
+          "response": []
+        },
+        {
+          "name": "Settings Me - PATCH",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/settings/me/", "host": ["{{baseUrl}}"], "path": ["api","settings","me",""] },
+            "body": { "mode": "raw", "raw": "{\n  \"language\": \"az\",\n  \"theme\": \"dark\",\n  \"currency\": \"AZN\",\n  \"email_notifications\": true,\n  \"timezone\": \"Asia/Baku\"\n}" }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Expenses",
+      "item": [
+        {
+          "name": "Categories - GET",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/expenses/categories/", "host": ["{{baseUrl}}"], "path": ["api","expenses","categories",""] }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "try {",
+                  "  const arr = pm.response.json();",
+                  "  if (Array.isArray(arr) && arr.length) pm.environment.set('categoryId', String(arr[0].id));",
+                  "} catch(e) {}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Categories - POST (create custom)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/expenses/categories/", "host": ["{{baseUrl}}"], "path": ["api","expenses","categories",""] },
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Custom{{$randomInt}}\"\n}" }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "try {",
+                  "  const obj = pm.response.json();",
+                  "  if (obj && obj.id) pm.environment.set('categoryId', String(obj.id));",
+                  "} catch(e) {}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Expenses - GET (list + monthly summary)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/expenses/?year={{year}}&month={{month}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api","expenses",""],
+              "query": [
+                { "key": "year", "value": "{{year}}" },
+                { "key": "month", "value": "{{month}}" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Expenses - POST (create)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/expenses/", "host": ["{{baseUrl}}"], "path": ["api","expenses",""] },
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Latte\",\n  \"price\": 5.50,\n  \"category_id\": {{categoryId}},\n  \"time\": \"{{isoNow}}\",\n  \"note\": \"morning coffee\"\n}" }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "try {",
+                  "  const obj = pm.response.json();",
+                  "  if (obj && obj.id) pm.environment.set('expenseId', String(obj.id));",
+                  "} catch(e) {}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Expense - GET by id",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/expenses/{{expenseId}}/", "host": ["{{baseUrl}}"], "path": ["api","expenses","{{expenseId}}",""] }
+          },
+          "response": []
+        },
+        {
+          "name": "Expense - PATCH",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/expenses/{{expenseId}}/", "host": ["{{baseUrl}}"], "path": ["api","expenses","{{expenseId}}",""] },
+            "body": { "mode": "raw", "raw": "{\n  \"note\": \"updated note\"\n}" }
+          },
+          "response": []
+        },
+        {
+          "name": "Expense - DELETE",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/expenses/{{expenseId}}/", "host": ["{{baseUrl}}"], "path": ["api","expenses","{{expenseId}}",""] }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Subscriptions",
+      "item": [
+        {
+          "name": "Subscriptions - GET (active)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/subscriptions/", "host": ["{{baseUrl}}"], "path": ["api","subscriptions",""] }
+          },
+          "response": []
+        },
+        {
+          "name": "Subscriptions - POST (create)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/subscriptions/", "host": ["{{baseUrl}}"], "path": ["api","subscriptions",""] },
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Netflix\",\n  \"price\": 10.99,\n  \"category_id\": {{categoryId}},\n  \"start_date\": \"{{today}}\",\n  \"monthly_day\": 15,\n  \"notify_email\": true,\n  \"is_active\": true\n}" }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "try {",
+                  "  const obj = pm.response.json();",
+                  "  if (obj && obj.id) pm.environment.set('subscriptionId', String(obj.id));",
+                  "} catch(e) {}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Subscription - GET by id",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/subscriptions/{{subscriptionId}}/", "host": ["{{baseUrl}}"], "path": ["api","subscriptions","{{subscriptionId}}",""] }
+          },
+          "response": []
+        },
+        {
+          "name": "Subscription - PATCH",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/subscriptions/{{subscriptionId}}/", "host": ["{{baseUrl}}"], "path": ["api","subscriptions","{{subscriptionId}}",""] },
+            "body": { "mode": "raw", "raw": "{\n  \"price\": 12.99\n}" }
+          },
+          "response": []
+        },
+        {
+          "name": "Subscription - DELETE",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/subscriptions/{{subscriptionId}}/", "host": ["{{baseUrl}}"], "path": ["api","subscriptions","{{subscriptionId}}",""] }
+          },
+          "response": []
+        },
+        {
+          "name": "Subscriptions - Calendar (month view)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/subscriptions/calendar/?year={{year}}&month={{month}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api","subscriptions","calendar",""],
+              "query": [
+                { "key": "year", "value": "{{year}}" },
+                { "key": "month", "value": "{{month}}" }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Rewards",
+      "item": [
+        {
+          "name": "Rewards - GET (list + earned)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/rewards/", "host": ["{{baseUrl}}"], "path": ["api","rewards",""] }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "History",
+      "item": [
+        {
+          "name": "History - Year Summary",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/history/?year={{year}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api","history",""],
+              "query": [{ "key": "year", "value": "{{year}}" }]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "History - Month Detail",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/history/?year={{year}}&month={{month}}&details=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["api","history",""],
+              "query": [
+                { "key": "year", "value": "{{year}}" },
+                { "key": "month", "value": "{{month}}" },
+                { "key": "details", "value": "true" }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "exec": [
+          "const now = new Date();",
+          "pm.environment.set('today', now.toISOString().slice(0,10));",
+          "pm.environment.set('isoNow', now.toISOString());",
+          "pm.environment.set('year', String(now.getUTCFullYear()));",
+          "pm.environment.set('month', String(now.getUTCMonth()+1));"
+        ],
+        "type": "text/javascript"
+      }
+    }
+  ]
+}
+
+
