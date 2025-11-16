@@ -17,6 +17,7 @@ interface SubscriptionCalendarProps {
   formatCurrency?: (amount: number) => string;
   onEditSubscription?: (sub: Subscription) => void;
   onDeleteSubscription?: (sub: Subscription) => void;
+  onImportFromGoogle?: () => void;
 }
 
 export function SubscriptionCalendar({ 
@@ -25,7 +26,8 @@ export function SubscriptionCalendar({
   convertToDisplayCurrency = (amount) => amount,
   formatCurrency = (amount) => `$${amount.toFixed(2)}`,
   onEditSubscription,
-  onDeleteSubscription
+  onDeleteSubscription,
+  onImportFromGoogle
 }: SubscriptionCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
 
@@ -64,9 +66,19 @@ export function SubscriptionCalendar({
             <h1 className="text-3xl text-white tracking-wider uppercase mb-2">Subscriptions</h1>
             <p className="text-gray-400">Manage your recurring payments</p>
           </div>
-          <div className="bg-black border border-gray-800 rounded-xl p-4">
-            <p className="text-sm text-gray-400 mb-1">Monthly Total</p>
-            <p className="text-2xl text-white">{formatCurrency(totalMonthly)}</p>
+          <div className="flex items-center gap-3">
+            <div className="bg-black border border-gray-800 rounded-xl p-4">
+              <p className="text-sm text-gray-400 mb-1">Monthly Total</p>
+              <p className="text-2xl text-white">{formatCurrency(totalMonthly)}</p>
+            </div>
+            {onImportFromGoogle && (
+              <button
+                onClick={onImportFromGoogle}
+                className="px-3 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg border border-green-700 transition-all duration-300 shadow-sm"
+              >
+                Import from Google
+              </button>
+            )}
           </div>
         </div>
 

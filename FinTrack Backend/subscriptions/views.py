@@ -7,7 +7,12 @@ from calendar import monthrange
 from django.db.models import Sum
 from .models import Subscription
 from .serializers import SubscriptionSerializer
+from decimal import Decimal
+import re
+import logging
+from typing import List, Dict, Any
 
+logger = logging.getLogger(__name__)
 
 class SubscriptionListCreateView(APIView):
     permission_classes = [IsAuthenticated]
@@ -130,3 +135,124 @@ class SubscriptionCalendarView(APIView):
 from django.shortcuts import render
 
 # Create your views here.
+
+
+class GoogleImportView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        """
+        Imports subscriptions by scanning the user's Gmail for receipts/recurring payments.
+        Body: { "access_token": "..." }
+        """
+        access_token = request.data.get('access_token')
+        if not access_token:
+            return Response({"access_token": ["This field is required."]}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # Build a Gmail API client with the provided access token
+            from google.oauth2.credentials import Credentials
+            from googleapiclient.discovery import build
+
+            creds = Credentials(token=access_token)
+            service = build('gmail', 'v1', credentials=creds, cache_discovery=False)
+
+            # Query for likely subscription receipts in the last 6 months
+            # This is a heuristic to catch common providers
+            query = '(subject:receipt OR subject:subscription OR subject:"payment received" OR subject:"your invoice") newer_than:180d'
+            results = service.users().messages().list(userId='me', q=query, maxResults=50).execute()
+            messages = results.get('messages', [])
+
+            found: List[Dict[str, Any]] = []
+            for m in messages:
+                msg = service.users().messages().get(userId='me', id=m['id'], format='metadata', metadataHeaders=['Subject', 'From', 'Date']).execute()
+                headers = {h['name'].lower(): h['value'] for h in msg.get('payload', {}).get('headers', [])}
+                subject = headers.get('subject', '')
+                sender = headers.get('from', '')
+                date_header = headers.get('date', '')
+                snippet = msg.get('snippet', '')
+
+                text = f'{subject}\n{snippet}'
+
+                # Heuristic extraction: vendor and amount
+                vendor_match = re.search(r'(Netflix|Spotify|YouTube|Apple Music|HBO|Prime|Amazon|Google|Dropbox|Microsoft|Adobe|GitHub|Notion|Zoom|Slack)', text, re.IGNORECASE)
+                amount_match = re.search(r'(?P<sym>[$€£₼])?\s*(?P<amt>\d{1,4}(?:[.,]\d{2})?)\s*(?P<cur>USD|EUR|GBP|AZN)?', text)
+
+                if not vendor_match or not amount_match:
+                    continue
+
+                vendor = vendor_match.group(0).strip().title()
+                cur = (amount_match.group('cur') or '').upper()
+                sym = amount_match.group('sym') or ''
+                amt_raw = amount_match.group('amt').replace(',', '.')
+                try:
+                    price = Decimal(amt_raw)
+                except Exception:
+                    continue
+
+                # Approximate monthly_day from Date header if available
+                monthly_day = 1
+                try:
+                    # Example Date header: Tue, 10 Sep 2024 12:34:56 +0000
+                    day_match = re.search(r',\s*(\d{1,2})\s', date_header)
+                    if day_match:
+                        monthly_day = max(1, min(31, int(day_match.group(1))))
+                except Exception:
+                    monthly_day = 1
+
+                found.append({
+                    'name': vendor,
+                    'price': price,
+                    'monthly_day': monthly_day,
+                })
+
+            # Deduplicate by vendor name
+            by_name: Dict[str, Dict[str, Any]] = {}
+            for item in found:
+                key = item['name']
+                if key not in by_name:
+                    by_name[key] = item
+                else:
+                    # Choose highest price if multiple matches
+                    if item['price'] > by_name[key]['price']:
+                        by_name[key] = item
+
+            created = 0
+            updated = 0
+
+            for name, item in by_name.items():
+                # If subscription with same name exists for user, update price/monthly_day
+                existing = Subscription.objects.filter(user=request.user, name=name, is_active=True).first()
+                if existing:
+                    changed = False
+                    if existing.price != item['price']:
+                        existing.price = item['price']
+                        changed = True
+                    if existing.monthly_day != item['monthly_day']:
+                        existing.monthly_day = item['monthly_day']
+                        changed = True
+                    if changed:
+                        existing.save()
+                        updated += 1
+                else:
+                    Subscription.objects.create(
+                        user=request.user,
+                        name=name,
+                        price=item['price'],
+                        category=None,
+                        start_date=date.today(),
+                        monthly_day=item['monthly_day'],
+                        notify_email=False,
+                        is_active=True,
+                    )
+                    created += 1
+
+            return Response({
+                "found": len(found),
+                "created": created,
+                "updated": updated,
+                "imported_names": list(by_name.keys())
+            })
+        except Exception as e:
+            logger.exception('Google import failed')
+            return Response({"detail": "Google import failed."}, status=status.HTTP_400_BAD_REQUEST)

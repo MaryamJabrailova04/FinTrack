@@ -23,12 +23,14 @@ import { UsernameDialog } from './components/UsernameDialog';
 import { BudgetDialog } from './components/BudgetDialog';
 import { GoalDialog } from './components/GoalDialog';
 import { CreditCard, RefreshCw, Sparkles } from 'lucide-react';
-import { login, register, me, logout } from './services/authService';
+import { login, register, me, logout, googleLogin } from './services/authService';
 import { listExpenses, createExpense, getCategories, createCategory, updateExpense, deleteExpense } from './services/expensesService';
 import { createSubscription, getSubscriptionCalendar, updateSubscription, deleteSubscription } from './services/subscriptionsService';
+import { importSubscriptionsFromGoogle } from './services/subscriptionsService';
 import { getProfileMe, updateProfileMe } from './services/profileService';
 import { getSettingsMe, updateSettingsMe } from './services/settingsService';
 import { getAccessToken } from './services/token';
+import { getGmailAccessToken } from './services/google';
 
 interface Spending {
   id: number;
@@ -149,9 +151,43 @@ export default function App() {
     setSubscriptions(prev => [newSubscription, ...prev]);
   };
 
+  const handleImportSubscriptionsFromGoogle = async () => {
+    try {
+      setSubsLoading(true);
+      const token = await getGmailAccessToken();
+      const res = await importSubscriptionsFromGoogle(token);
+      await reloadSubscriptions();
+      alert(`Imported: created ${res.created}, updated ${res.updated}`);
+    } catch (e: any) {
+      console.error(e);
+      setSubsError(e?.message || 'Google import failed');
+    } finally {
+      setSubsLoading(false);
+    }
+  };
+
   const handleAddService = (service: string) => {
     if (!services.includes(service)) {
       setServices(prev => [...prev, service]);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      setAuthError(null);
+      setAuthLoading(true);
+      const { getGoogleIdToken } = await import('./services/google');
+      const idToken = await getGoogleIdToken();
+      const user = await googleLogin(idToken);
+      setUsername(user.first_name || user.username || 'User');
+      setIsAuthenticated(true);
+      await initializeUserProfileAndSettings();
+      await reloadExpenses();
+    } catch (e: any) {
+      setAuthError(e?.response?.data?.detail || e?.message || 'Google sign-in failed');
+      console.error(e);
+    } finally {
+      setAuthLoading(false);
     }
   };
 
@@ -777,6 +813,7 @@ export default function App() {
                     void deleteSubscriptionFromBackend(sub.id);
                   }
                 }}
+                onImportFromGoogle={isAuthenticated ? handleImportSubscriptionsFromGoogle : undefined}
               />
             )}
             {activeView === 'subscribes' && subsLoading && (
@@ -787,6 +824,7 @@ export default function App() {
                 {typeof subsError === 'string' ? subsError : 'An error occurred'}
               </div>
             )}
+
 
             {/* Rewards View - Show when rewards tab is active and panel is visible */}
             {activeTab === 'rewards' && isRewardsPanelVisible && (
@@ -1021,6 +1059,23 @@ export default function App() {
       <SignUpDialog
         isOpen={isSignUpDialogOpen}
         onClose={() => setIsSignUpDialogOpen(false)}
+        onGoogleCredential={async (idToken) => {
+          try {
+            setAuthError(null);
+            setAuthLoading(true);
+            const user = await googleLogin(idToken);
+            setUsername(user.first_name || user.username || 'User');
+            setIsAuthenticated(true);
+            setIsSignInDialogOpen(false);
+            setIsSignUpDialogOpen(false);
+            await initializeUserProfileAndSettings();
+            await reloadExpenses();
+          } catch (e: any) {
+            setAuthError(e?.response?.data?.detail || e?.message || 'Google sign-in failed');
+          } finally {
+            setAuthLoading(false);
+          }
+        }}
         onSignUp={async (data) => {
           setAuthError(null);
           setAuthLoading(true);
@@ -1045,6 +1100,23 @@ export default function App() {
       <SignInDialog
         isOpen={isSignInDialogOpen}
         onClose={() => setIsSignInDialogOpen(false)}
+        onGoogleCredential={async (idToken) => {
+          try {
+            setAuthError(null);
+            setAuthLoading(true);
+            const user = await googleLogin(idToken);
+            setUsername(user.first_name || user.username || 'User');
+            setIsAuthenticated(true);
+            setIsSignInDialogOpen(false);
+            setIsSignUpDialogOpen(false);
+            await initializeUserProfileAndSettings();
+            await reloadExpenses();
+          } catch (e: any) {
+            setAuthError(e?.response?.data?.detail || e?.message || 'Google sign-in failed');
+          } finally {
+            setAuthLoading(false);
+          }
+        }}
         onSignIn={async (data) => {
           setAuthError(null);
           setAuthLoading(true);

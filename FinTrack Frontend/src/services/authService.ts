@@ -30,4 +30,11 @@ export async function me(): Promise<{ id: number; username: string; email: strin
   return res.data;
 }
 
+export async function googleLogin(idToken: string): Promise<{ id: number; username: string; email: string; first_name: string }> {
+  const res = await api.post('/api/accounts/google-login/', { id_token: idToken });
+  const tokens = { access: res.data.access as string, refresh: res.data.refresh as string };
+  setTokens(tokens);
+  return res.data.user as { id: number; username: string; email: string; first_name: string };
+}
+
 

@@ -1,25 +1,39 @@
 import React from 'react';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X, Eye, EyeOff } from 'lucide-react';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Button } from './ui/button';
+import { renderGoogleButton } from '../services/google';
 
 interface SignUpDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onSignUp?: (data: { username: string; email: string; password: string }) => void;
+  onGoogleAuth?: () => void;
+  onGoogleCredential?: (idToken: string) => void;
 }
 
 export function SignUpDialog({
   isOpen,
   onClose,
   onSignUp,
+  onGoogleAuth,
+  onGoogleCredential,
 }: SignUpDialogProps) {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const googleBtnRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (isOpen && googleBtnRef.current && onGoogleCredential) {
+      void renderGoogleButton(googleBtnRef.current, (idToken) => {
+        onGoogleCredential(idToken);
+      }).catch(console.error);
+    }
+  }, [isOpen, onGoogleCredential, onClose]);
 
   const handleSubmit = () => {
     if (!username || !email || !password) {
@@ -110,6 +124,17 @@ export function SignUpDialog({
                 )}
               </button>
             </div>
+          </div>
+          {/* Or separator */}
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-px bg-gray-800" />
+            <span className="text-xs text-gray-500 uppercase tracking-wider">or</span>
+            <div className="flex-1 h-px bg-gray-800" />
+          </div>
+
+          {/* Google Sign Up Button (rendered by Google) */}
+          <div className="w-full flex items-center justify-center">
+            <div ref={googleBtnRef} />
           </div>
         </div>
 

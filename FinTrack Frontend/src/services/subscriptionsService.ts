@@ -40,4 +40,14 @@ export async function getSubscriptionCalendar(params: { year?: number; month?: n
   };
 }
 
+export async function importSubscriptionsFromGoogle(accessToken: string) {
+  const res = await api.post('/api/subscriptions/import/google/', { access_token: accessToken });
+  return res.data as {
+    found: number;
+    created: number;
+    updated: number;
+    imported_names: string[];
+  };
+}
+
 
