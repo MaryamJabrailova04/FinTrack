@@ -1,0 +1,9 @@
+---
+- name: Install Java for SonarQube
+  ansible.builtin.apt:
+    name: openjdk-17-jre
+    state: present
+
+- name: SonarQube placeholder
+  ansible.builtin.debug:
+    msg: "Add existing SonarQube install tasks here or point this role to the current group4b SonarQube playbook."

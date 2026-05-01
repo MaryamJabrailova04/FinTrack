@@ -1,0 +1,15 @@
+server {
+    listen 80 default_server;
+    server_name _;
+    root {{ frontend_root }};
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location /healthz {
+        access_log off;
+        return 200 "ok\n";
+    }
+}

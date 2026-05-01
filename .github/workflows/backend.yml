@@ -1,0 +1,58 @@
+name: backend
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "FinTrack Backend/**"
+      - ".github/workflows/backend.yml"
+
+jobs:
+  test-scan-deploy:
+    # Use a self-hosted runner in snet-ops or the Ansible VM so private backend IPs are reachable.
+    runs-on: self-hosted
+    env:
+      SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install test dependencies
+        working-directory: "FinTrack Backend"
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Django tests
+        working-directory: "FinTrack Backend"
+        env:
+          DJANGO_SECRET_KEY: test-secret
+          DJANGO_DEBUG: "True"
+        run: python manage.py test
+
+      - name: SonarQube scan
+        if: env.SONAR_HOST_URL != ''
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+      - name: Deploy backend to VM
+        shell: bash
+        run: |
+          rsync -az --delete --exclude '.env' --exclude 'db.sqlite3' -e "ssh -o StrictHostKeyChecking=no" "FinTrack Backend/" "${{ secrets.VM_USER }}@${{ secrets.BACKEND_PRIVATE_IP }}:/tmp/fintrack-backend/"
+          ssh -o StrictHostKeyChecking=no "${{ secrets.VM_USER }}@${{ secrets.BACKEND_PRIVATE_IP }}" '
+            sudo mkdir -p /opt/fintrack/backend &&
+            sudo rsync -a --delete /tmp/fintrack-backend/ /opt/fintrack/backend/ &&
+            sudo chown -R www-data:www-data /opt/fintrack/backend &&
+            sudo /opt/fintrack/venv/bin/pip install -r /opt/fintrack/backend/requirements.txt &&
+            sudo -u www-data /opt/fintrack/venv/bin/python /opt/fintrack/backend/manage.py migrate &&
+            sudo -u www-data /opt/fintrack/venv/bin/python /opt/fintrack/backend/manage.py collectstatic --noinput &&
+            sudo systemctl restart fintrack-backend
+          '

@@ -15,4 +15,6 @@ google-auth==2.35.0
 google-api-python-client==2.153.0
 whitenoise==6.7.0
 gunicorn==23.0.0
-
+mssql-django==1.5
+pyodbc==5.2.0
+opencensus-ext-azure==1.1.14

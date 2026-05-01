@@ -1,0 +1,15 @@
+[Unit]
+Description=FinTrack Django backend
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory={{ backend_root }}
+EnvironmentFile=/etc/fintrack/fintrack.env
+ExecStart={{ backend_venv }}/bin/gunicorn fintrack.wsgi:application --bind 127.0.0.1:{{ backend_port }} --workers 3
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

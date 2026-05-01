@@ -3,7 +3,7 @@ URL configuration for fintrack project.
 """
 from django.contrib import admin
 from django.urls import path, include, re_path
-from .views import MainPageView
+from .views import HealthView, MainPageView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView, TokenVerifyView
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
@@ -13,6 +13,7 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('api/health/', HealthView.as_view(), name='health'),
     # Auth (JWT)
     path('api/auth/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),

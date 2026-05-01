@@ -1,0 +1,41 @@
+name: frontend
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "FinTrack Frontend/**"
+      - ".github/workflows/frontend.yml"
+
+jobs:
+  build-deploy:
+    # Use a self-hosted runner in snet-ops or the Ansible VM so private frontend IPs are reachable.
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: "FinTrack Frontend/package-lock.json"
+
+      - name: Install dependencies
+        working-directory: "FinTrack Frontend"
+        run: npm ci --legacy-peer-deps
+
+      - name: Build frontend
+        working-directory: "FinTrack Frontend"
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+        run: npm run build
+
+      - name: Deploy static files to frontend VM
+        shell: bash
+        run: |
+          rsync -az --delete -e "ssh -o StrictHostKeyChecking=no" "FinTrack Frontend/dist/" "${{ secrets.VM_USER }}@${{ secrets.FRONTEND_PRIVATE_IP }}:/tmp/fintrack/"
+          ssh -o StrictHostKeyChecking=no "${{ secrets.VM_USER }}@${{ secrets.FRONTEND_PRIVATE_IP }}" "sudo mkdir -p /var/www/fintrack && sudo rsync -a --delete /tmp/fintrack/ /var/www/fintrack/ && sudo chown -R www-data:www-data /var/www/fintrack && sudo systemctl restart nginx"

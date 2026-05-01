@@ -1,0 +1,24 @@
+---
+- name: Configure common OS packages
+  hosts: all
+  become: true
+  roles:
+    - common
+
+- name: Configure FinTrack frontend
+  hosts: frontend
+  become: true
+  roles:
+    - frontend
+
+- name: Configure FinTrack backend
+  hosts: backend
+  become: true
+  roles:
+    - backend
+
+- name: Configure SonarQube
+  hosts: sonarqube
+  become: true
+  roles:
+    - sonarqube

@@ -72,4 +72,10 @@ FinTrack Frontend/fintrackfront/.env
 .vscode/
 *.iml
 
-
+# Terraform local state and secrets
+**/.terraform/
+**/.terraform.lock.hcl
+**/terraform.tfstate
+**/terraform.tfstate.*
+**/terraform.tfvars
+!**/terraform.tfvars.example

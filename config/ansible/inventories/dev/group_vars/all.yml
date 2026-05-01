@@ -1,0 +1,18 @@
+app_name: fintrack
+frontend_root: /var/www/fintrack
+backend_root: /opt/fintrack/backend
+backend_venv: /opt/fintrack/venv
+backend_port: 8000
+
+django_debug: "False"
+django_allowed_hosts: "localhost,127.0.0.1"
+cors_allow_all: "False"
+cors_allowed_origins: ""
+applicationinsights_connection_string: ""
+
+# Set these from Ansible Vault, environment lookup, or CI injected extra-vars.
+db_host: ""
+db_name: "appdb-group4f-dev"
+db_user: "sqladminuser"
+db_password: ""
+django_secret_key: "change-me-with-ansible-vault"
