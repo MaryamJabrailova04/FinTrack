@@ -481,26 +481,66 @@ export default function App() {
     }
   }
 
+  function getApiErrorMessage(e: any, fallback: string): string {
+    const data = e?.response?.data;
+    if (typeof data === 'string') return data;
+    if (data?.detail) return String(data.detail);
+    if (data && typeof data === 'object') {
+      return Object.entries(data)
+        .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : String(value)}`)
+        .join(' ');
+    }
+    return e?.message || fallback;
+  }
+
+  function requireLogin(message: string): boolean {
+    if (getAccessToken()) return true;
+    setAuthError(message);
+    setIsSignInDialogOpen(true);
+    return false;
+  }
+
   async function ensureCategory(name: string): Promise<number | null> {
     const key = name.toLowerCase();
     if (categoryNameToId[key]) return categoryNameToId[key];
+
+    const applyCategories = (list: Array<{ id: number; name: string }>) => {
+      const names = list.map(c => c.name.toLowerCase());
+      const map: Record<string, number> = {};
+      list.forEach(c => {
+        map[c.name.toLowerCase()] = c.id;
+      });
+      setCategories(names);
+      setCategoryNameToId(map);
+      return map;
+    };
+
     try {
+      const current = applyCategories(await getCategories());
+      if (current[key]) return current[key];
+
       const created = await createCategory(key);
-      const newMap = { ...categoryNameToId, [key]: created.id };
+      const newMap = { ...current, [key]: created.id };
       setCategoryNameToId(newMap);
       if (!categories.includes(key)) setCategories(prev => [...prev, key]);
       return created.id;
     } catch (e) {
-      console.error(e);
-      return null;
+      try {
+        const refreshed = applyCategories(await getCategories());
+        return refreshed[key] || null;
+      } catch (inner) {
+        console.error(inner);
+        return null;
+      }
     }
   }
-
   async function addExpenseToBackend(sp: Omit<Spending, 'id'>) {
+    if (!requireLogin('Please sign in to add expenses.')) return;
     setExpensesError(null);
     setExpensesLoading(true);
     try {
       const catId = await ensureCategory(sp.category);
+      if (!catId) throw new Error('Could not resolve expense category.');
       const iso = `${sp.date}T12:00:00Z`;
       await createExpense({
         name: sp.description,
@@ -511,7 +551,7 @@ export default function App() {
       });
       await reloadExpenses();
     } catch (e: any) {
-      setExpensesError(e?.response?.data || 'Failed to create expense');
+      setExpensesError(getApiErrorMessage(e, 'Failed to create expense'));
       console.error(e);
     } finally {
       setExpensesLoading(false);
@@ -534,7 +574,7 @@ export default function App() {
       setEditingSpending(null);
       await reloadExpenses();
     } catch (e: any) {
-      setExpensesError(e?.response?.data || 'Failed to update expense');
+      setExpensesError(getApiErrorMessage(e, 'Failed to update expense'));
       console.error(e);
     } finally {
       setExpensesLoading(false);
@@ -548,7 +588,7 @@ export default function App() {
       await deleteExpense(id);
       await reloadExpenses();
     } catch (e: any) {
-      setExpensesError(e?.response?.data || 'Failed to delete expense');
+      setExpensesError(getApiErrorMessage(e, 'Failed to delete expense'));
       console.error(e);
     } finally {
       setExpensesLoading(false);
@@ -594,6 +634,7 @@ export default function App() {
   }
 
   async function addSubscriptionToBackend(sub: Omit<Subscription, 'id'>) {
+    if (!requireLogin('Please sign in to add subscriptions.')) return;
     setSubsError(null);
     setSubsLoading(true);
     try {
@@ -608,7 +649,7 @@ export default function App() {
       });
       await reloadSubscriptions();
     } catch (e: any) {
-      setSubsError(e?.response?.data || 'Failed to create subscription');
+      setSubsError(getApiErrorMessage(e, 'Failed to create subscription'));
       console.error(e);
     } finally {
       setSubsLoading(false);
@@ -631,7 +672,7 @@ export default function App() {
       setEditingSubscription(null);
       await reloadSubscriptions();
     } catch (e: any) {
-      setSubsError(e?.response?.data || 'Failed to update subscription');
+      setSubsError(getApiErrorMessage(e, 'Failed to update subscription'));
       console.error(e);
     } finally {
       setSubsLoading(false);
@@ -645,7 +686,7 @@ export default function App() {
       await deleteSubscription(id);
       await reloadSubscriptions();
     } catch (e: any) {
-      setSubsError(e?.response?.data || 'Failed to delete subscription');
+      setSubsError(getApiErrorMessage(e, 'Failed to delete subscription'));
       console.error(e);
     } finally {
       setSubsLoading(false);
