@@ -234,11 +234,119 @@ resource "azurerm_network_security_group" "ops" {
     source_address_prefix      = var.admin_source_prefix
     destination_address_prefix = "*"
   }
-}
+
+  security_rule {
+    name                       = "allow-sonarqube-from-admin"
+    priority                   = 110
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "9000"
+    source_address_prefix      = var.admin_source_prefix
+    destination_address_prefix = "*"
+  }}
 
 resource "azurerm_subnet_network_security_group_association" "ops" {
   subnet_id                 = azurerm_subnet.ops.id
   network_security_group_id = azurerm_network_security_group.ops.id
+}
+
+
+resource "azurerm_public_ip" "ansible" {
+  name                = "pip-ansible-${local.suffix}"
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+  allocation_method   = "Static"
+  sku                 = "Standard"
+  tags                = local.tags
+}
+
+resource "azurerm_network_interface" "ansible" {
+  name                = "nic-ansible-${local.suffix}"
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+  tags                = local.tags
+
+  ip_configuration {
+    name                          = "internal"
+    subnet_id                     = azurerm_subnet.ops.id
+    private_ip_address_allocation = "Static"
+    private_ip_address            = "10.40.5.4"
+    public_ip_address_id          = azurerm_public_ip.ansible.id
+  }
+}
+
+resource "azurerm_linux_virtual_machine" "ansible" {
+  name                = "vm-ansible-${local.suffix}"
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+  size                = var.vm_size
+  admin_username      = var.admin_username
+  network_interface_ids = [
+    azurerm_network_interface.ansible.id,
+  ]
+  tags = local.tags
+
+  admin_ssh_key {
+    username   = var.admin_username
+    public_key = var.ssh_public_key
+  }
+
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "Premium_LRS"
+  }
+
+  source_image_reference {
+    publisher = "Canonical"
+    offer     = "0001-com-ubuntu-server-jammy"
+    sku       = "22_04-lts-gen2"
+    version   = "latest"
+  }
+}
+
+resource "azurerm_network_interface" "sonarqube" {
+  name                = "nic-sonarqube-${local.suffix}"
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+  tags                = local.tags
+
+  ip_configuration {
+    name                          = "internal"
+    subnet_id                     = azurerm_subnet.ops.id
+    private_ip_address_allocation = "Static"
+    private_ip_address            = "10.40.5.5"
+  }
+}
+
+resource "azurerm_linux_virtual_machine" "sonarqube" {
+  name                = "vm-sonarqube-${local.suffix}"
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+  size                = var.vm_size
+  admin_username      = var.admin_username
+  network_interface_ids = [
+    azurerm_network_interface.sonarqube.id,
+  ]
+  tags = local.tags
+
+  admin_ssh_key {
+    username   = var.admin_username
+    public_key = var.ssh_public_key
+  }
+
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "Premium_LRS"
+  }
+
+  source_image_reference {
+    publisher = "Canonical"
+    offer     = "0001-com-ubuntu-server-jammy"
+    sku       = "22_04-lts-gen2"
+    version   = "latest"
+  }
 }
 
 resource "azurerm_lb" "frontend" {

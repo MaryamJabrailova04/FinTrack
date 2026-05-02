@@ -18,6 +18,7 @@ output "application_insights_connection_string" {
   value     = azurerm_application_insights.main.connection_string
   sensitive = true
 }
+
 output "application_gateway_name" {
   value = azurerm_application_gateway.main.name
 }
@@ -28,4 +29,16 @@ output "frontend_ilb_private_ip" {
 
 output "backend_ilb_private_ip" {
   value = "10.40.3.10"
+}
+
+output "ansible_public_ip" {
+  value = azurerm_public_ip.ansible.ip_address
+}
+
+output "ansible_private_ip" {
+  value = azurerm_network_interface.ansible.private_ip_address
+}
+
+output "sonarqube_private_ip" {
+  value = azurerm_network_interface.sonarqube.private_ip_address
 }
