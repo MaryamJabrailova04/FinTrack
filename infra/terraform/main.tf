@@ -175,11 +175,11 @@ resource "azurerm_mssql_server" "main" {
 }
 
 resource "azurerm_mssql_database" "main" {
-  name      = "appdb-${local.suffix}"
-  server_id = azurerm_mssql_server.main.id
-  sku_name  = "S0"
+  name        = "appdb-${local.suffix}"
+  server_id   = azurerm_mssql_server.main.id
+  sku_name    = "S0"
   max_size_gb = 2
-  tags      = local.tags
+  tags        = local.tags
 }
 
 resource "azurerm_private_dns_zone" "sql" {
@@ -245,7 +245,8 @@ resource "azurerm_network_security_group" "ops" {
     destination_port_range     = "9000"
     source_address_prefix      = var.admin_source_prefix
     destination_address_prefix = "*"
-  }}
+  }
+}
 
 resource "azurerm_subnet_network_security_group_association" "ops" {
   subnet_id                 = azurerm_subnet.ops.id
@@ -301,7 +302,7 @@ resource "azurerm_linux_virtual_machine" "ansible" {
   source_image_reference {
     publisher = "Canonical"
     offer     = "0001-com-ubuntu-server-jammy"
-    sku       = "22_04-lts-gen2"
+    sku       = "22_04-lts"
     version   = "latest"
   }
 }
@@ -344,7 +345,7 @@ resource "azurerm_linux_virtual_machine" "sonarqube" {
   source_image_reference {
     publisher = "Canonical"
     offer     = "0001-com-ubuntu-server-jammy"
-    sku       = "22_04-lts-gen2"
+    sku       = "22_04-lts"
     version   = "latest"
   }
 }
@@ -444,7 +445,7 @@ resource "azurerm_linux_virtual_machine_scale_set" "frontend" {
   source_image_reference {
     publisher = "Canonical"
     offer     = "0001-com-ubuntu-server-jammy"
-    sku       = "22_04-lts-gen2"
+    sku       = "22_04-lts"
     version   = "latest"
   }
 
@@ -483,7 +484,7 @@ resource "azurerm_linux_virtual_machine_scale_set" "backend" {
   source_image_reference {
     publisher = "Canonical"
     offer     = "0001-com-ubuntu-server-jammy"
-    sku       = "22_04-lts-gen2"
+    sku       = "22_04-lts"
     version   = "latest"
   }
 
@@ -579,10 +580,33 @@ resource "azurerm_monitor_autoscale_setting" "backend" {
   }
 }
 
+
+resource "azurerm_web_application_firewall_policy" "appgw" {
+  name                = "wafpol-${local.suffix}"
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
+  tags                = local.tags
+
+  policy_settings {
+    enabled                     = true
+    mode                        = "Prevention"
+    request_body_check          = true
+    file_upload_limit_in_mb     = 100
+    max_request_body_size_in_kb = 128
+  }
+
+  managed_rules {
+    managed_rule_set {
+      type    = "OWASP"
+      version = "3.2"
+    }
+  }
+}
 resource "azurerm_application_gateway" "main" {
   name                = "appgw-${local.suffix}"
   resource_group_name = azurerm_resource_group.main.name
   location            = azurerm_resource_group.main.location
+  firewall_policy_id  = azurerm_web_application_firewall_policy.appgw.id
   tags                = local.tags
 
   sku {
@@ -591,11 +615,9 @@ resource "azurerm_application_gateway" "main" {
     capacity = 2
   }
 
-  waf_configuration {
-    enabled          = true
-    firewall_mode    = "Prevention"
-    rule_set_type    = "OWASP"
-    rule_set_version = "3.2"
+  ssl_policy {
+    policy_type = "Predefined"
+    policy_name = "AppGwSslPolicy20220101S"
   }
 
   gateway_ip_configuration {
