@@ -29,7 +29,7 @@ import { createSubscription, getSubscriptionCalendar, updateSubscription, delete
 import { importSubscriptionsFromGoogle } from './services/subscriptionsService';
 import { getProfileMe, updateProfileMe } from './services/profileService';
 import { getSettingsMe, updateSettingsMe } from './services/settingsService';
-import { getAccessToken } from './services/token';
+import { clearTokens, getAccessToken } from './services/token';
 import { getGmailAccessToken } from './services/google';
 
 interface Spending {
@@ -315,7 +315,9 @@ export default function App() {
           const u = await me();
           setUsername(u.username || 'User');
         } catch (e) {
-          // ignore
+          clearTokens();
+          setIsAuthenticated(false);
+          return;
         }
         await initializeUserProfileAndSettings();
       })();
@@ -368,10 +370,13 @@ export default function App() {
   }
   // Reload expenses when switching to spendings view
   useEffect(() => {
-    if (activeView === 'spendings') {
+    if (activeView === 'spendings' && isAuthenticated) {
       void reloadExpenses();
+    } else if (activeView === 'spendings') {
+      setExpensesError(null);
+      setExpensesLoading(false);
     }
-  }, [activeView]);
+  }, [activeView, isAuthenticated]);
 
   async function initializeUserProfileAndSettings() {
     try {
@@ -411,19 +416,30 @@ export default function App() {
 
   // Reload subscriptions when switching to subscribes view
   useEffect(() => {
-    if (activeView === 'subscribes') {
+    if (activeView === 'subscribes' && isAuthenticated) {
       void reloadSubscriptions();
+    } else if (activeView === 'subscribes') {
+      setSubsError(null);
+      setSubsLoading(false);
     }
-  }, [activeView]);
+  }, [activeView, isAuthenticated]);
 
   // Load rewards when rewards panel is shown
   useEffect(() => {
-    if (activeTab === 'rewards' && isRewardsPanelVisible) {
+    if (activeTab === 'rewards' && isRewardsPanelVisible && isAuthenticated) {
       void reloadRewards();
+    } else if (activeTab === 'rewards' && isRewardsPanelVisible) {
+      setRewardsError(null);
+      setRewardsLoading(false);
     }
-  }, [activeTab, isRewardsPanelVisible]);
+  }, [activeTab, isRewardsPanelVisible, isAuthenticated]);
 
   async function reloadExpenses() {
+    if (!getAccessToken()) {
+      setExpensesError(null);
+      setExpensesLoading(false);
+      return;
+    }
     setExpensesError(null);
     setExpensesLoading(true);
     try {
@@ -540,6 +556,11 @@ export default function App() {
   }
 
   async function reloadSubscriptions() {
+    if (!getAccessToken()) {
+      setSubsError(null);
+      setSubsLoading(false);
+      return;
+    }
     setSubsError(null);
     setSubsLoading(true);
     try {
@@ -632,6 +653,11 @@ export default function App() {
   }
 
   async function reloadRewards() {
+    if (!getAccessToken()) {
+      setRewardsError(null);
+      setRewardsLoading(false);
+      return;
+    }
     setRewardsError(null);
     setRewardsLoading(true);
     try {
