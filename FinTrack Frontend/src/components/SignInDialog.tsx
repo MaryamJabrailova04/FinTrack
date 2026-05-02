@@ -9,9 +9,11 @@ import { renderGoogleButton } from '../services/google';
 interface SignInDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onSignIn?: (data: { username: string; password: string }) => void;
+  onSignIn?: (data: { username: string; password: string }) => void | Promise<void>;
   onGoogleCredential?: (idToken: string) => void;
   onGoogleAuth?: () => void;
+  loading?: boolean;
+  error?: string | null;
 }
 
 export function SignInDialog({
@@ -20,6 +22,8 @@ export function SignInDialog({
   onSignIn,
   onGoogleCredential,
   onGoogleAuth,
+  loading = false,
+  error = null,
 }: SignInDialogProps) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -34,20 +38,22 @@ export function SignInDialog({
     }
   }, [isOpen, onGoogleCredential, onClose]);
 
-  const handleSubmit = () => {
-    if (!username || !password) {
+  const handleSubmit = async () => {
+    if (!username || !password || loading) {
       return;
     }
 
-    if (onSignIn) {
-      onSignIn({ username, password });
+    try {
+      if (onSignIn) {
+        await onSignIn({ username, password });
+      }
+    } catch {
+      return;
     }
 
-    // Reset form
     setUsername('');
     setPassword('');
     setShowPassword(false);
-    onClose();
   };
 
   const handleForgetPassword = () => {
@@ -139,6 +145,10 @@ export function SignInDialog({
           </div>
         </div>
 
+        {error && (
+          <div className="text-sm text-red-400 bg-red-950/30 border border-red-900 rounded-lg p-3">{error}</div>
+        )}
+
         {/* Footer */}
         <div className="p-6 border-t border-gray-800 flex gap-3">
           <Button
@@ -151,7 +161,7 @@ export function SignInDialog({
           <Button
             onClick={handleSubmit}
             className="flex-1 bg-blue-600 hover:bg-blue-500 text-white"
-            disabled={!username || !password}
+            disabled={!username || !password || loading}
           >
             Sign In
           </Button>

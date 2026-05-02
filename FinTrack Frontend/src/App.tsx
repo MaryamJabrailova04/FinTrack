@@ -1162,6 +1162,8 @@ export default function App() {
             setAuthLoading(false);
           }
         }}
+        loading={authLoading}
+        error={authError}
         onSignUp={async (data) => {
           setAuthError(null);
           setAuthLoading(true);
@@ -1173,9 +1175,11 @@ export default function App() {
             setIsAuthenticated(true);
             await initializeUserProfileAndSettings();
             await reloadExpenses();
+            setIsSignUpDialogOpen(false);
           } catch (e: any) {
-            setAuthError(e?.response?.data?.detail || 'Sign up failed');
+            setAuthError(getApiErrorMessage(e, 'Sign up failed'));
             console.error(e);
+            throw e;
           } finally {
             setAuthLoading(false);
           }
@@ -1203,6 +1207,8 @@ export default function App() {
             setAuthLoading(false);
           }
         }}
+        loading={authLoading}
+        error={authError}
         onSignIn={async (data) => {
           setAuthError(null);
           setAuthLoading(true);
@@ -1213,9 +1219,11 @@ export default function App() {
             setIsAuthenticated(true);
             await initializeUserProfileAndSettings();
             await reloadExpenses();
+            setIsSignInDialogOpen(false);
           } catch (e: any) {
-            setAuthError(e?.response?.data?.detail || 'Sign in failed');
+            setAuthError(getApiErrorMessage(e, 'Sign in failed'));
             console.error(e);
+            throw e;
           } finally {
             setAuthLoading(false);
           }

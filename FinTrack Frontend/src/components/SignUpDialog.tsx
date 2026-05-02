@@ -9,9 +9,11 @@ import { renderGoogleButton } from '../services/google';
 interface SignUpDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onSignUp?: (data: { username: string; email: string; password: string }) => void;
+  onSignUp?: (data: { username: string; email: string; password: string }) => void | Promise<void>;
   onGoogleAuth?: () => void;
   onGoogleCredential?: (idToken: string) => void;
+  loading?: boolean;
+  error?: string | null;
 }
 
 export function SignUpDialog({
@@ -20,6 +22,8 @@ export function SignUpDialog({
   onSignUp,
   onGoogleAuth,
   onGoogleCredential,
+  loading = false,
+  error = null,
 }: SignUpDialogProps) {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -35,21 +39,23 @@ export function SignUpDialog({
     }
   }, [isOpen, onGoogleCredential, onClose]);
 
-  const handleSubmit = () => {
-    if (!username || !email || !password) {
+  const handleSubmit = async () => {
+    if (!username || !email || !password || loading) {
       return;
     }
 
-    if (onSignUp) {
-      onSignUp({ username, email, password });
+    try {
+      if (onSignUp) {
+        await onSignUp({ username, email, password });
+      }
+    } catch {
+      return;
     }
 
-    // Reset form
     setUsername('');
     setEmail('');
     setPassword('');
     setShowPassword(false);
-    onClose();
   };
 
   if (!isOpen) return null;
@@ -138,6 +144,10 @@ export function SignUpDialog({
           </div>
         </div>
 
+        {error && (
+          <div className="text-sm text-red-400 bg-red-950/30 border border-red-900 rounded-lg p-3">{error}</div>
+        )}
+
         {/* Footer */}
         <div className="p-6 border-t border-gray-800 flex gap-3">
           <Button
@@ -150,7 +160,7 @@ export function SignUpDialog({
           <Button
             onClick={handleSubmit}
             className="flex-1 bg-blue-600 hover:bg-blue-500 text-white"
-            disabled={!username || !email || !password}
+            disabled={!username || !email || !password || loading}
           >
             Sign Up
           </Button>
