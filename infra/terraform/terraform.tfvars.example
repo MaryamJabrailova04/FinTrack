@@ -3,12 +3,11 @@ owner       = "group4f"
 environment = "dev"
 location    = "southeastasia"
 
-# Keep this different from the existing group4b VNet 10.20.0.0/16.
 address_space = ["10.40.0.0/16"]
 
 # Fill these through GitHub Actions secrets or a local tfvars file excluded from git.
 admin_source_prefix = "REPLACE_WITH_YOUR_PUBLIC_IP_CIDR"
 ssh_public_key     = "ssh-rsa REPLACE_WITH_PUBLIC_KEY"
-sql_admin_password = "REPLACE_WITH_STRONG_PASSWORD"
+sql_admin_password = "PASSWORD1721!"
 appgw_ssl_certificate_data     = "REPLACE_WITH_BASE64_PFX"
 appgw_ssl_certificate_password = "REPLACE_WITH_PFX_PASSWORD"
