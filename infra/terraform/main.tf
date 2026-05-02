@@ -135,6 +135,39 @@ resource "azurerm_subnet_network_security_group_association" "backend" {
   network_security_group_id = azurerm_network_security_group.backend.id
 }
 
+resource "azurerm_public_ip" "nat" {
+  name                = "pip-nat-${local.suffix}"
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+  allocation_method   = "Static"
+  sku                 = "Standard"
+  tags                = local.tags
+}
+
+resource "azurerm_nat_gateway" "egress" {
+  name                    = "natgw-${local.suffix}"
+  location                = azurerm_resource_group.main.location
+  resource_group_name     = azurerm_resource_group.main.name
+  sku_name                = "Standard"
+  idle_timeout_in_minutes = 10
+  tags                    = local.tags
+}
+
+resource "azurerm_nat_gateway_public_ip_association" "egress" {
+  nat_gateway_id       = azurerm_nat_gateway.egress.id
+  public_ip_address_id = azurerm_public_ip.nat.id
+}
+
+resource "azurerm_subnet_nat_gateway_association" "frontend" {
+  subnet_id      = azurerm_subnet.frontend.id
+  nat_gateway_id = azurerm_nat_gateway.egress.id
+}
+
+resource "azurerm_subnet_nat_gateway_association" "backend" {
+  subnet_id      = azurerm_subnet.backend.id
+  nat_gateway_id = azurerm_nat_gateway.egress.id
+}
+
 resource "azurerm_public_ip" "appgw" {
   name                = "pip-appgw-${local.suffix}"
   location            = azurerm_resource_group.main.location

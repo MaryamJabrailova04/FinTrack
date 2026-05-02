@@ -37,5 +37,5 @@ jobs:
       - name: Deploy static files to frontend VM
         shell: bash
         run: |
-          rsync -az --delete -e "ssh -o StrictHostKeyChecking=no" "FinTrack Frontend/dist/" "${{ secrets.VM_USER }}@${{ secrets.FRONTEND_PRIVATE_IP }}:/tmp/fintrack/"
+          rsync -az --delete -e "ssh -o StrictHostKeyChecking=no" "FinTrack Frontend/build/" "${{ secrets.VM_USER }}@${{ secrets.FRONTEND_PRIVATE_IP }}:/tmp/fintrack/"
           ssh -o StrictHostKeyChecking=no "${{ secrets.VM_USER }}@${{ secrets.FRONTEND_PRIVATE_IP }}" "sudo mkdir -p /var/www/fintrack && sudo rsync -a --delete /tmp/fintrack/ /var/www/fintrack/ && sudo chown -R www-data:www-data /var/www/fintrack && sudo systemctl restart nginx"
