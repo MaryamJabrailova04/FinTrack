@@ -22,6 +22,8 @@ interface Subscription {
 interface HistoryViewProps {
   spendings?: Spending[]; // fallback
   subscriptions?: Subscription[]; // fallback
+  isAuthenticated?: boolean;
+  refreshKey?: number;
   currency?: 'USD' | 'AZN';
   convertToDisplayCurrency?: (amountUSD: number) => number;
   formatCurrency?: (amount: number) => string;
@@ -30,11 +32,16 @@ interface HistoryViewProps {
 export function HistoryView({ 
   spendings = [], 
   subscriptions = [],
+  isAuthenticated = false,
+  refreshKey = 0,
   currency = 'USD',
   convertToDisplayCurrency = (amount) => amount,
   formatCurrency = (amount) => `$${amount.toFixed(2)}`
 }: HistoryViewProps) {
-  const [selectedMonth, setSelectedMonth] = useState(new Date(2025, new Date().getMonth(), 1));
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
   const [isMonthPickerOpen, setIsMonthPickerOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,9 +59,20 @@ export function HistoryView({
   const years = [selectedMonth.getFullYear()];
 
   useEffect(() => {
-    void loadMonth();
+    if (isAuthenticated) {
+      void loadMonth();
+      return;
+    }
+
+    setError(null);
+    setLoading(false);
+    setBackendSpendings(spendings);
+    setBackendSubscriptions(subscriptions);
+    const totalSpendingsUSD = spendings.reduce((sum, s) => sum + s.amount, 0);
+    const totalSubsUSD = subscriptions.reduce((sum, s) => sum + s.amount, 0);
+    setTotals({ expenses: totalSpendingsUSD, subscriptions: totalSubsUSD, combined: totalSpendingsUSD + totalSubsUSD });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedMonth]);
+  }, [selectedMonth, isAuthenticated, refreshKey, spendings, subscriptions]);
 
   async function loadMonth() {
     setError(null);

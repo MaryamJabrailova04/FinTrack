@@ -62,6 +62,7 @@ export default function App() {
   const [isSettingsPanelVisible, setIsSettingsPanelVisible] = useState(false);
   const [isRewardsPanelVisible, setIsRewardsPanelVisible] = useState(false);
   const [isHistoryPanelVisible, setIsHistoryPanelVisible] = useState(false);
+  const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isAddSubscriptionDialogOpen, setIsAddSubscriptionDialogOpen] = useState(false);
@@ -542,14 +543,22 @@ export default function App() {
       const catId = await ensureCategory(sp.category);
       if (!catId) throw new Error('Could not resolve expense category.');
       const iso = `${sp.date}T12:00:00Z`;
-      await createExpense({
+      const created = await createExpense({
         name: sp.description,
         price: sp.amount,
         category_id: catId,
         time: iso,
         note: '',
       });
+      setSpendings(prev => [{
+        id: created.id,
+        category: created.category?.name || sp.category,
+        amount: Number(created.price) || sp.amount,
+        date: (created.time || iso).slice(0, 10),
+        description: created.name || sp.description,
+      }, ...prev]);
       await reloadExpenses();
+      setHistoryRefreshKey(prev => prev + 1);
     } catch (e: any) {
       setExpensesError(getApiErrorMessage(e, 'Failed to create expense'));
       console.error(e);
@@ -573,6 +582,7 @@ export default function App() {
       });
       setEditingSpending(null);
       await reloadExpenses();
+      setHistoryRefreshKey(prev => prev + 1);
     } catch (e: any) {
       setExpensesError(getApiErrorMessage(e, 'Failed to update expense'));
       console.error(e);
@@ -587,6 +597,7 @@ export default function App() {
     try {
       await deleteExpense(id);
       await reloadExpenses();
+      setHistoryRefreshKey(prev => prev + 1);
     } catch (e: any) {
       setExpensesError(getApiErrorMessage(e, 'Failed to delete expense'));
       console.error(e);
@@ -639,7 +650,7 @@ export default function App() {
     setSubsLoading(true);
     try {
       const monthly_day = parseInt(sub.date.slice(8, 10), 10);
-      await createSubscription({
+      const created = await createSubscription({
         name: sub.service,
         price: sub.amount,
         start_date: sub.date,
@@ -647,7 +658,15 @@ export default function App() {
         notify_email: !!sub.sendMail,
         is_active: true,
       });
+      setSubscriptions(prev => [{
+        id: created.id,
+        service: created.name || sub.service,
+        date: created.start_date || sub.date,
+        amount: Number(created.price) || sub.amount,
+        color: (created.name || sub.service || '').toLowerCase().includes('netflix') ? 'red' : 'green',
+      }, ...prev]);
       await reloadSubscriptions();
+      setHistoryRefreshKey(prev => prev + 1);
     } catch (e: any) {
       setSubsError(getApiErrorMessage(e, 'Failed to create subscription'));
       console.error(e);
@@ -671,6 +690,7 @@ export default function App() {
       });
       setEditingSubscription(null);
       await reloadSubscriptions();
+      setHistoryRefreshKey(prev => prev + 1);
     } catch (e: any) {
       setSubsError(getApiErrorMessage(e, 'Failed to update subscription'));
       console.error(e);
@@ -685,6 +705,7 @@ export default function App() {
     try {
       await deleteSubscription(id);
       await reloadSubscriptions();
+      setHistoryRefreshKey(prev => prev + 1);
     } catch (e: any) {
       setSubsError(getApiErrorMessage(e, 'Failed to delete subscription'));
       console.error(e);
@@ -903,6 +924,8 @@ export default function App() {
               <HistoryView 
                 spendings={spendings} 
                 subscriptions={subscriptions}
+                isAuthenticated={isAuthenticated}
+                refreshKey={historyRefreshKey}
                 currency={selectedCurrency}
                 convertToDisplayCurrency={convertToDisplayCurrency}
                 formatCurrency={formatCurrency}
