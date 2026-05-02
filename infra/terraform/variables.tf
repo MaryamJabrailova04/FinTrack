@@ -15,8 +15,8 @@ variable "environment" {
 
 variable "location" {
   type        = string
-  description = "Use an allowed Azure region. southeastasia is allowed by the project restriction list."
-  default     = "southeastasia"
+  description = "Use an allowed Azure region. centralindia is allowed by the project restriction list."
+  default     = "centralindia"
 }
 
 variable "address_space" {

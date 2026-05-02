@@ -103,3 +103,27 @@ SQL cpu_percent > 80% for 5 minutes
 7. Create or read a record through the FinTrack UI/API.
 8. Show App Gateway backend health and alert rules.
 9. Show GitHub Actions runs for infra, frontend, and backend.
+## Verify separated frontend/backend VMSS
+
+Terraform creates separate compute tiers:
+
+```text
+Frontend VMSS: vmss-frontend-group4f-dev, subnet snet-frontend, ILB 10.40.2.10
+Backend VMSS:  vmss-backend-group4f-dev, subnet snet-backend, ILB 10.40.3.10
+```
+
+After apply, verify:
+
+```bash
+terraform output frontend_vmss_name
+terraform output backend_vmss_name
+terraform output frontend_internal_load_balancer_name
+terraform output backend_internal_load_balancer_name
+```
+
+Application Gateway routing must stay:
+
+```text
+/      -> frontend-pool -> frontend ILB -> frontend VMSS
+/api/* -> backend-pool  -> backend ILB  -> backend VMSS
+```

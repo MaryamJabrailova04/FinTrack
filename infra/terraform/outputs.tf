@@ -42,3 +42,27 @@ output "ansible_private_ip" {
 output "sonarqube_private_ip" {
   value = azurerm_network_interface.sonarqube.private_ip_address
 }
+
+output "frontend_vmss_name" {
+  value = azurerm_linux_virtual_machine_scale_set.frontend.name
+}
+
+output "backend_vmss_name" {
+  value = azurerm_linux_virtual_machine_scale_set.backend.name
+}
+
+output "frontend_subnet_name" {
+  value = azurerm_subnet.frontend.name
+}
+
+output "backend_subnet_name" {
+  value = azurerm_subnet.backend.name
+}
+
+output "frontend_internal_load_balancer_name" {
+  value = azurerm_lb.frontend.name
+}
+
+output "backend_internal_load_balancer_name" {
+  value = azurerm_lb.backend.name
+}

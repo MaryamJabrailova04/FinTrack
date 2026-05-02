@@ -24,7 +24,7 @@ flowchart LR
 
 ## Region
 
-Use `southeastasia` unless your instructor gives another allowed region. It is different from the forbidden list in the project brief.
+Use `centralindia` unless your instructor gives another allowed region. It is different from the forbidden list in the project brief.
 
 ## Provision Infrastructure
 
