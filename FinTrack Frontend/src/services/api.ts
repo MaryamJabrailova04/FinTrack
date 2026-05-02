@@ -1,7 +1,8 @@
 import axios, { AxiosError, AxiosInstance } from 'axios';
 import { clearTokens, getAccessToken, getRefreshToken, setAccessToken, withRefreshLock } from './token';
 
-const resolvedEnvUrl = import.meta.env.VITE_API_URL?.replace(/\/+$/, '');
+const rawEnvUrl = import.meta.env.VITE_API_URL?.replace(/\/+$/, '');
+const resolvedEnvUrl = rawEnvUrl?.replace(/\/api$/i, '');
 const baseURL = resolvedEnvUrl || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8000');
 
 export const api: AxiosInstance = axios.create({
