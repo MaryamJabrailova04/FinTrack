@@ -145,11 +145,7 @@ export default function App() {
   };
 
   const handleAddSubscriptionFromDialog = (subscription: Omit<Subscription, 'id'>) => {
-    const newSubscription: Subscription = {
-      id: Date.now(),
-      ...subscription,
-    };
-    setSubscriptions(prev => [newSubscription, ...prev]);
+    void addSubscriptionToBackend(subscription);
   };
 
   const handleImportSubscriptionsFromGoogle = async () => {
