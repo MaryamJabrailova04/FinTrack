@@ -49,19 +49,12 @@ ansible-playbook -i inventories/dev/hosts.ini playbooks/site.yml
 
 ## 4. GitHub Actions CI/CD
 
-Frontend and backend workflows run on GitHub-hosted Ubuntu runners, then SSH to the public Ansible VM as a jump host. The Ansible VM copies artifacts to the private frontend/backend VMSS instances.
+Frontend and backend workflows run on GitHub-hosted Ubuntu runners. They build/test in GitHub Actions, then use Azure VMSS Run Command to deploy inside the private frontend/backend VMSS instances. No SSH key or VM password is required for app deployment.
 
-Required app deployment secrets:
+Required app deployment secret:
 
 ```text
-ANSIBLE_HOST=20.198.6.118
-ANSIBLE_USER=azureuser
-ANSIBLE_SSH_PRIVATE_KEY=<private key that can SSH to azureuser@ANSIBLE_HOST>
-VM_USER=azureuser
-FRONTEND_PRIVATE_IP=10.40.2.4
-BACKEND_PRIVATE_IP=10.40.3.5
-VITE_API_URL=https://group4f-fintrack-s79z.centralindia.cloudapp.azure.com/api
-VITE_GOOGLE_CLIENT_ID=<optional Google client id>
+AZURE_CREDENTIALS
 ```
 
 Required infra workflow secrets:
@@ -82,7 +75,7 @@ SONAR_HOST_URL
 SONAR_TOKEN
 ```
 
-If frontend/backend workflows are queued, an old workflow version is still waiting for a self-hosted runner. New workflow runs after this change should use `ubuntu-latest`. If a new run fails, check the `Validate required secrets` step first.
+Frontend/backend workflows should use `ubuntu-latest`. If a new run fails, check the `Validate required secrets` step first, then the VMSS Run Command step.
 Infra workflow safety: push events run `terraform plan` only. `terraform apply` runs only from manual `workflow_dispatch` with `apply=true`, and only when the saved plan reports changes. Do not use `apply=true` until the GitHub workflow is configured to use the same remote Terraform state as the live deployment; otherwise Terraform can try to create a second resource group.
 ## 5. App Gateway Rules
 

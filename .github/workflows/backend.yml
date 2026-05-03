@@ -14,6 +14,8 @@ jobs:
   test-scan-deploy:
     runs-on: ubuntu-latest
     env:
+      RESOURCE_GROUP: rg-3tier-group4f-dev-s79z
+      BACKEND_VMSS: vmss-backend-group4f-dev
       SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
     steps:
@@ -23,11 +25,7 @@ jobs:
       - name: Validate required secrets
         shell: bash
         run: |
-          test -n "${{ secrets.ANSIBLE_HOST }}" || (echo "Missing ANSIBLE_HOST" && exit 1)
-          test -n "${{ secrets.ANSIBLE_USER }}" || (echo "Missing ANSIBLE_USER" && exit 1)
-          test -n "${{ secrets.ANSIBLE_SSH_PRIVATE_KEY }}" || (echo "Missing ANSIBLE_SSH_PRIVATE_KEY" && exit 1)
-          test -n "${{ secrets.VM_USER }}" || (echo "Missing VM_USER" && exit 1)
-          test -n "${{ secrets.BACKEND_PRIVATE_IP }}" || (echo "Missing BACKEND_PRIVATE_IP" && exit 1)
+          test -n "${{ secrets.AZURE_CREDENTIALS }}" || (echo "Missing AZURE_CREDENTIALS" && exit 1)
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -54,37 +52,32 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
-      - name: Configure SSH
-        shell: bash
-        run: |
-          install -m 700 -d ~/.ssh
-          printf '%s\n' "${{ secrets.ANSIBLE_SSH_PRIVATE_KEY }}" > ~/.ssh/ansible_key
-          chmod 600 ~/.ssh/ansible_key
-          ssh-keyscan -H "${{ secrets.ANSIBLE_HOST }}" >> ~/.ssh/known_hosts
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Deploy backend through Ansible VM
+      - name: Deploy backend with VMSS run-command
         shell: bash
-        env:
-          ANSIBLE_HOST: ${{ secrets.ANSIBLE_HOST }}
-          ANSIBLE_USER: ${{ secrets.ANSIBLE_USER }}
-          VM_USER: ${{ secrets.VM_USER }}
-          BACKEND_PRIVATE_IP: ${{ secrets.BACKEND_PRIVATE_IP }}
         run: |
           set -euo pipefail
-          RSYNC_SSH="ssh -i ~/.ssh/ansible_key -o StrictHostKeyChecking=yes"
-          SSH_CMD="ssh -i ~/.ssh/ansible_key -o StrictHostKeyChecking=yes"
-          rsync -az --delete --exclude '.env' --exclude 'db.sqlite3' -e "$RSYNC_SSH" "FinTrack Backend/" "$ANSIBLE_USER@$ANSIBLE_HOST:/tmp/fintrack-backend-src/"
-          $SSH_CMD "$ANSIBLE_USER@$ANSIBLE_HOST" "VM_USER='$VM_USER' BACKEND_PRIVATE_IP='$BACKEND_PRIVATE_IP' bash -s" <<'REMOTE'
-          set -euo pipefail
-          rsync -az --delete --exclude '.env' --exclude 'db.sqlite3' -e "ssh -o StrictHostKeyChecking=no" /tmp/fintrack-backend-src/ "$VM_USER@$BACKEND_PRIVATE_IP:/tmp/fintrack-backend/"
-          ssh -o StrictHostKeyChecking=no "$VM_USER@$BACKEND_PRIVATE_IP" '
-            sudo mkdir -p /opt/fintrack/backend &&
-            sudo rsync -a --delete /tmp/fintrack-backend/ /opt/fintrack/backend/ &&
-            sudo chown -R www-data:www-data /opt/fintrack/backend &&
-            sudo /opt/fintrack/venv/bin/pip install -r /opt/fintrack/backend/requirements.txt &&
-            sudo -u www-data /opt/fintrack/venv/bin/python /opt/fintrack/backend/manage.py migrate &&
-            sudo -u www-data /opt/fintrack/venv/bin/python /opt/fintrack/backend/manage.py collectstatic --noinput &&
-            sudo systemctl restart fintrack-backend &&
-            curl -fsS http://127.0.0.1:8000/api/health/
-          '
-          REMOTE
+          az vmss run-command invoke \
+            --resource-group "$RESOURCE_GROUP" \
+            --name "$BACKEND_VMSS" \
+            --instance-id "*" \
+            --command-id RunShellScript \
+            --scripts "
+              set -euo pipefail
+              sudo apt-get update -y
+              sudo apt-get install -y git rsync curl ca-certificates
+              rm -rf /tmp/fintrack-ci
+              git clone --depth 1 https://github.com/MaryamJabrailova04/FinTrack.git /tmp/fintrack-ci
+              sudo mkdir -p /opt/fintrack/backend
+              sudo rsync -a --delete --exclude '.env' --exclude 'db.sqlite3' '/tmp/fintrack-ci/FinTrack Backend/' /opt/fintrack/backend/
+              sudo chown -R www-data:www-data /opt/fintrack/backend
+              sudo /opt/fintrack/venv/bin/pip install -r /opt/fintrack/backend/requirements.txt
+              sudo -u www-data /opt/fintrack/venv/bin/python /opt/fintrack/backend/manage.py migrate
+              sudo -u www-data /opt/fintrack/venv/bin/python /opt/fintrack/backend/manage.py collectstatic --noinput
+              sudo systemctl restart fintrack-backend
+              curl -fsS http://127.0.0.1:8000/api/health/
+            "

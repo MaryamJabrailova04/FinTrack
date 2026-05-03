@@ -67,7 +67,7 @@ Set real values in `inventories/dev/group_vars/all.yml` or use Ansible Vault for
 
 ## Deploy Frontend
 
-The frontend pipeline builds `FinTrack Frontend` on GitHub-hosted Ubuntu and deploys through the public Ansible VM to the private frontend VMSS instance.
+The frontend pipeline builds `FinTrack Frontend` on GitHub-hosted Ubuntu and deploys to the private frontend VMSS with Azure VMSS Run Command.
 
 Local build:
 
@@ -87,7 +87,7 @@ or leave it empty when the frontend is served from the same gateway host.
 
 ## Deploy Backend
 
-The backend pipeline tests Django on GitHub-hosted Ubuntu, optionally runs SonarQube, then deploys through the public Ansible VM to the private backend VMSS instance. It installs requirements, runs migrations, collects static files, and restarts `fintrack-backend`.
+The backend pipeline tests Django on GitHub-hosted Ubuntu, optionally runs SonarQube, then deploys to the private backend VMSS with Azure VMSS Run Command. It installs requirements, runs migrations, collects static files, and restarts `fintrack-backend`.
 
 Backend production settings come from `/etc/fintrack/fintrack.env`, rendered by Ansible.
 
