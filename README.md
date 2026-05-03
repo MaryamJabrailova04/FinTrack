@@ -39,13 +39,18 @@ terraform plan
 terraform apply
 ```
 
-For GitHub Actions, configure these repository secrets:
+For GitHub Actions infra provisioning, configure these repository secrets:
 
 ```text
 AZURE_CREDENTIALS
+ADMIN_SOURCE_PREFIX
 SSH_PUBLIC_KEY
 SQL_ADMIN_PASSWORD
+APPGW_SSL_CERTIFICATE_DATA
+APPGW_SSL_CERTIFICATE_PASSWORD
 ```
+
+Do not remove `infra/terraform` from this repo. The infra workflow, rebuild procedure, architecture evidence, and project acceptance criteria all depend on it.
 
 ## Configure VMs With Ansible
 
@@ -61,7 +66,7 @@ Set real values in `inventories/dev/group_vars/all.yml` or use Ansible Vault for
 
 ## Deploy Frontend
 
-The frontend pipeline builds `FinTrack Frontend` and copies `dist/` to the frontend VM Nginx root.
+The frontend pipeline builds `FinTrack Frontend` on GitHub-hosted Ubuntu and deploys through the public Ansible VM to the private frontend VMSS instance.
 
 Local build:
 
@@ -81,7 +86,7 @@ or leave it empty when the frontend is served from the same gateway host.
 
 ## Deploy Backend
 
-The backend pipeline tests Django, optionally runs SonarQube, copies code to the backend VM, installs requirements, runs migrations, collects static files, and restarts `fintrack-backend`.
+The backend pipeline tests Django on GitHub-hosted Ubuntu, optionally runs SonarQube, then deploys through the public Ansible VM to the private backend VMSS instance. It installs requirements, runs migrations, collects static files, and restarts `fintrack-backend`.
 
 Backend production settings come from `/etc/fintrack/fintrack.env`, rendered by Ansible.
 

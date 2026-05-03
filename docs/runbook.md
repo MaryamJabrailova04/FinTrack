@@ -47,19 +47,32 @@ ansible all -i inventories/dev/hosts.ini -m ping
 ansible-playbook -i inventories/dev/hosts.ini playbooks/site.yml
 ```
 
-## 4. GitHub Actions Secrets
+## 4. GitHub Actions CI/CD
 
-Required:
+Frontend and backend workflows run on GitHub-hosted Ubuntu runners, then SSH to the public Ansible VM as a jump host. The Ansible VM copies artifacts to the private frontend/backend VMSS instances.
+
+Required app deployment secrets:
+
+```text
+ANSIBLE_HOST=20.198.6.118
+ANSIBLE_USER=azureuser
+ANSIBLE_SSH_PRIVATE_KEY=<private key that can SSH to azureuser@ANSIBLE_HOST>
+VM_USER=azureuser
+FRONTEND_PRIVATE_IP=10.40.2.4
+BACKEND_PRIVATE_IP=10.40.3.5
+VITE_API_URL=https://group4f-fintrack-s79z.centralindia.cloudapp.azure.com/api
+VITE_GOOGLE_CLIENT_ID=<optional Google client id>
+```
+
+Required infra workflow secrets:
 
 ```text
 AZURE_CREDENTIALS
+ADMIN_SOURCE_PREFIX
 SSH_PUBLIC_KEY
 SQL_ADMIN_PASSWORD
-VM_USER
-FRONTEND_PRIVATE_IP
-BACKEND_PRIVATE_IP
-VITE_API_URL
-VITE_GOOGLE_CLIENT_ID
+APPGW_SSL_CERTIFICATE_DATA
+APPGW_SSL_CERTIFICATE_PASSWORD
 ```
 
 Optional SonarQube:
@@ -69,8 +82,7 @@ SONAR_HOST_URL
 SONAR_TOKEN
 ```
 
-Use a self-hosted GitHub runner in the VNet/ops subnet because GitHub-hosted runners cannot reach private VM IPs.
-
+If frontend/backend workflows are queued, an old workflow version is still waiting for a self-hosted runner. New workflow runs after this change should use `ubuntu-latest`. If a new run fails, check the `Validate required secrets` step first.
 ## 5. App Gateway Rules
 
 Configure routing as:
