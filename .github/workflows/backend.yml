@@ -61,10 +61,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          INSTANCE_ID=$(az vmss list-instances --resource-group "$RESOURCE_GROUP" --name "$BACKEND_VMSS" --query "[0].instanceId" -o tsv)
+          test -n "$INSTANCE_ID" || (echo "No backend VMSS instance found" && exit 1)
           az vmss run-command invoke \
             --resource-group "$RESOURCE_GROUP" \
             --name "$BACKEND_VMSS" \
-            --instance-id "*" \
+            --instance-id "$INSTANCE_ID" \
             --command-id RunShellScript \
             --scripts "
               set -euo pipefail
