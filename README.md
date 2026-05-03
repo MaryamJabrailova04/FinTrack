@@ -47,8 +47,8 @@ ADMIN_SOURCE_PREFIX
 SSH_PUBLIC_KEY
 SQL_ADMIN_PASSWORD
 APPGW_SSL_CERTIFICATE_DATA
-APPGW_SSL_CERTIFICATE_PASSWORD
 ```
+Note: the PFX password is optional. Leave `APPGW_SSL_CERTIFICATE_PASSWORD` unset when the PFX was exported with an empty password.
 
 Do not remove `infra/terraform` from this repo. The infra workflow, rebuild procedure, architecture evidence, and project acceptance criteria all depend on it.
 

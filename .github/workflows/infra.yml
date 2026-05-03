@@ -26,7 +26,6 @@ jobs:
           test -n "${{ secrets.SSH_PUBLIC_KEY }}" || (echo "Missing SSH_PUBLIC_KEY" && exit 1)
           test -n "${{ secrets.SQL_ADMIN_PASSWORD }}" || (echo "Missing SQL_ADMIN_PASSWORD" && exit 1)
           test -n "${{ secrets.APPGW_SSL_CERTIFICATE_DATA }}" || (echo "Missing APPGW_SSL_CERTIFICATE_DATA" && exit 1)
-          test -n "${{ secrets.APPGW_SSL_CERTIFICATE_PASSWORD }}" || (echo "Missing APPGW_SSL_CERTIFICATE_PASSWORD" && exit 1)
 
 
       - name: Azure login
