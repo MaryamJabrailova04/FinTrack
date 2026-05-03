@@ -83,6 +83,7 @@ SONAR_TOKEN
 ```
 
 If frontend/backend workflows are queued, an old workflow version is still waiting for a self-hosted runner. New workflow runs after this change should use `ubuntu-latest`. If a new run fails, check the `Validate required secrets` step first.
+Infra workflow safety: push events run `terraform plan` only. `terraform apply` runs only from manual `workflow_dispatch` with `apply=true`, and only when the saved plan reports changes. Do not use `apply=true` until the GitHub workflow is configured to use the same remote Terraform state as the live deployment; otherwise Terraform can try to create a second resource group.
 ## 5. App Gateway Rules
 
 Configure routing as:

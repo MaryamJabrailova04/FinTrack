@@ -51,6 +51,7 @@ APPGW_SSL_CERTIFICATE_DATA
 Note: the PFX password is optional. Leave `APPGW_SSL_CERTIFICATE_PASSWORD` unset when the PFX was exported with an empty password.
 
 Do not remove `infra/terraform` from this repo. The infra workflow, rebuild procedure, architecture evidence, and project acceptance criteria all depend on it.
+Infra workflow safety: push events run `terraform plan` only. `terraform apply` runs only from manual `workflow_dispatch` with `apply=true`, and only when the saved plan reports changes. Do not use `apply=true` until the GitHub workflow is configured to use the same remote Terraform state as the live deployment; otherwise Terraform can try to create a second resource group.
 
 ## Configure VMs With Ansible
 

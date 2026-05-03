@@ -2,6 +2,15 @@ name: infra
 
 on:
   workflow_dispatch:
+    inputs:
+      apply:
+        description: "Apply the saved Terraform plan after planning"
+        required: true
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
   push:
     paths:
       - "infra/terraform/**"
@@ -27,7 +36,6 @@ jobs:
           test -n "${{ secrets.SQL_ADMIN_PASSWORD }}" || (echo "Missing SQL_ADMIN_PASSWORD" && exit 1)
           test -n "${{ secrets.APPGW_SSL_CERTIFICATE_DATA }}" || (echo "Missing APPGW_SSL_CERTIFICATE_DATA" && exit 1)
 
-
       - name: Azure login
         uses: azure/login@v2
         with:
@@ -46,8 +54,39 @@ jobs:
         run: terraform validate
 
       - name: Terraform plan
-        run: terraform plan -input=false -var="admin_source_prefix=${{ secrets.ADMIN_SOURCE_PREFIX }}" -var="ssh_public_key=${{ secrets.SSH_PUBLIC_KEY }}" -var="sql_admin_password=${{ secrets.SQL_ADMIN_PASSWORD }}" -var="appgw_ssl_certificate_data=${{ secrets.APPGW_SSL_CERTIFICATE_DATA }}" -var="appgw_ssl_certificate_password=${{ secrets.APPGW_SSL_CERTIFICATE_PASSWORD }}"
+        id: plan
+        shell: bash
+        run: |
+          set +e
+          terraform plan -detailed-exitcode -input=false -out=tfplan \
+            -var="admin_source_prefix=${{ secrets.ADMIN_SOURCE_PREFIX }}" \
+            -var="ssh_public_key=${{ secrets.SSH_PUBLIC_KEY }}" \
+            -var="sql_admin_password=${{ secrets.SQL_ADMIN_PASSWORD }}" \
+            -var="appgw_ssl_certificate_data=${{ secrets.APPGW_SSL_CERTIFICATE_DATA }}" \
+            -var="appgw_ssl_certificate_password=${{ secrets.APPGW_SSL_CERTIFICATE_PASSWORD }}"
+          code=$?
+          set -e
+          echo "exitcode=$code" >> "$GITHUB_OUTPUT"
+          if [ "$code" -eq 0 ]; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            echo "Terraform plan completed: no changes."
+            exit 0
+          fi
+          if [ "$code" -eq 2 ]; then
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+            echo "Terraform plan completed: changes detected. Apply is manual only."
+            exit 0
+          fi
+          echo "Terraform plan failed."
+          exit "$code"
 
       - name: Terraform apply
-        if: github.ref == 'refs/heads/main'
-        run: terraform apply -auto-approve -input=false -var="admin_source_prefix=${{ secrets.ADMIN_SOURCE_PREFIX }}" -var="ssh_public_key=${{ secrets.SSH_PUBLIC_KEY }}" -var="sql_admin_password=${{ secrets.SQL_ADMIN_PASSWORD }}" -var="appgw_ssl_certificate_data=${{ secrets.APPGW_SSL_CERTIFICATE_DATA }}" -var="appgw_ssl_certificate_password=${{ secrets.APPGW_SSL_CERTIFICATE_PASSWORD }}"
+        if: github.event_name == 'workflow_dispatch' && inputs.apply == 'true' && steps.plan.outputs.has_changes == 'true'
+        run: terraform apply -auto-approve -input=false tfplan
+
+      - name: Skip apply summary
+        if: steps.plan.outputs.has_changes == 'true' && !(github.event_name == 'workflow_dispatch' && inputs.apply == 'true')
+        shell: bash
+        run: |
+          echo "Terraform detected changes, but apply was skipped."
+          echo "Run this workflow manually with apply=true only after confirming GitHub Actions uses the same Terraform state as the live deployment."
